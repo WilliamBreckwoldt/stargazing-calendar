@@ -1,0 +1,7 @@
+# Jupyter notebook interface
+ipykernel # Notebooks won't work without it
+matplotlib # Plotting. Duh.
+
+# Core
+astral # Astronomy calculations for sun and moon
+pytz # Timezone management. TODO: check if needed

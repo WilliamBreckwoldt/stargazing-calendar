@@ -1,5 +1,8 @@
-# Jupyter notebook interface
+# Jupyter notebook
 ipykernel # Notebooks won't work without it
+
+# GUI
+ipywidgets
 matplotlib # Plotting. Duh.
 
 # Core

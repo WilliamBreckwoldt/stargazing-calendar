@@ -104,7 +104,6 @@ def plot_day(day_info):
     plt.xlabel("Time of Day")
     plt.ylabel("Elevation (Degrees)")
     plt.grid(True, linestyle=":")
-    plt.legend()
 
     # Improve x-axis date formatting
 

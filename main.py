@@ -1,5 +1,8 @@
 import importlib
 import datetime
+import json
+import os
+from typing import Any
 
 from astral import LocationInfo
 
@@ -10,6 +13,8 @@ importlib.reload(astronomy)
 importlib.reload(gui)
 
 DEFAULT_TIMESTEP = 3  # minutes #TODO: Move this to constants
+DATA_FOLDER = "data"  # TODO: Move this to constants
+DATA_VERSION = "1.0"
 
 
 def stargazing_calendar():
@@ -57,24 +62,120 @@ def get_year_info(
     timestep_minutes: int = DEFAULT_TIMESTEP,
 ):
 
-    # Check if data already exists
+    # --- 1. Turn arguments into a JSON filename ---
+    base_filename = f"lat_{location.latitude}_lon_{location.longitude}_year_{year}_v{DATA_VERSION}"
+    target_filename = os.path.join(
+        DATA_FOLDER, f"{base_filename}_timestep_{timestep_minutes}.data.json"
+    )
+
+    # Ensure the data directory exists
+    if not os.path.exists(DATA_FOLDER):
+        os.makedirs(DATA_FOLDER)
+
+    # --- 2. Check for a file with the same name or a compatible timestep ---
+    for filename in os.listdir(DATA_FOLDER):
+        if filename.startswith(base_filename) and filename.endswith(
+            ".data.json"
+        ):
+            try:
+                # Extract the timestep from the filename
+                saved_timestep_str = filename.replace(
+                    f"{base_filename}_timestep_", ""
+                ).replace(".data.json", "")
+            except (ValueError, IndexError):
+                # Handles cases where the filename is not in the expected format
+                continue
+            saved_timestep = int(saved_timestep_str)
+
+            # Check if the current timestep is a multiple of the saved one
+            if timestep_minutes % saved_timestep == 0:
+                filepath = os.path.join(DATA_FOLDER, filename)
+                print(f"Found compatible data file: {filename}")
+                # --- 3. If it exists, load and return it as a dictionary ---
+                with open(filepath, "r") as f:
+                    data = json.load(f, object_hook=datetime_decoder)
+                return data
+
+    # --- 4. If not, show a code snippet to save the dictionary ---
+    print("No compatible data file found.")
+    print("\n--- Python Code Snippet to Save Data ---\n")
 
     start_day = datetime.date(year, 1, 1)
     end_day = datetime.date(year, 12, 31)
 
     day = start_day - datetime.timedelta(days=1)
-    year_info = {}
+    daily_info = {}
     while day < end_day:
         day = day + datetime.timedelta(days=1)
         print(day)
-        year_info.update(
-            {
-                day: astronomy.get_day_info(
-                    location=location,
-                    day=day,
-                    timestep_minutes=timestep_minutes,
-                )
-            }
+        day_info = astronomy.get_day_info(
+            location=location,
+            day=day,
+            timestep_minutes=timestep_minutes,
         )
+        del day_info["location"]
+        daily_info.update({day.isoformat(): day_info})
+
+    year_info = {
+        "year": year,
+        "location": {
+            "name": location.name,
+            "region": location.region,
+            "timezone": location.timezone,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+        },
+        "days": daily_info,
+    }
+
+    # The path to the output file
+    save_path = target_filename
+
+    # Ensure the directory exists
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    # Write the dictionary to a JSON file
+    with open(save_path, "w") as f:
+        json.dump(year_info, f, indent=2, cls=DateTimeEncoder)
+
+    print(f"Data successfully saved to {{save_path}}")
 
     return year_info
+
+
+# --- Custom JSON Encoder and Decoder for Datetime Objects ---
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder to handle date, datetime, and timedelta objects
+    by converting them into a structured, typed dictionary.
+    """
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, datetime.datetime):
+            return {"__type__": "datetime", "iso": o.isoformat()}
+        if isinstance(o, datetime.date):
+            return {"__type__": "date", "iso": o.isoformat()}
+        if isinstance(o, datetime.timedelta):
+            return {"__type__": "timedelta", "seconds": o.total_seconds()}
+
+        return super().default(o)
+
+
+def datetime_decoder(json_dict: dict) -> Any:
+    """
+    Object hook for json.load() to convert our structured dictionaries
+    back into their original Python objects.
+    """
+    if "__type__" in json_dict:
+        type_name = json_dict["__type__"]
+        if type_name == "datetime":
+            return datetime.datetime.fromisoformat(json_dict["iso"])
+        if type_name == "date":
+            return datetime.date.fromisoformat(json_dict["iso"])
+        if type_name == "timedelta":
+            return datetime.timedelta(seconds=json_dict["seconds"])
+
+    # Return the dictionary as-is if it's not one of our custom types
+    return json_dict

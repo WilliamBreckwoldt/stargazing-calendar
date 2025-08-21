@@ -32,12 +32,16 @@ def get_day_info(
     # 2. Set up the time iteration
     # Start at midnight on the given day in the location's timezone
     start_day = day
-    start_time = tz.localize(datetime.datetime.combine(start_day, datetime.time(12, 0)))
+    start_time = tz.localize(
+        datetime.datetime.combine(start_day, datetime.time(12, 0))
+    )
     utc_start_time = start_time.astimezone(datetime.timezone.utc)
 
     # End 24 hours later
     end_day = start_day + datetime.timedelta(days=1)
-    end_time = tz.localize(datetime.datetime.combine(end_day, datetime.time(12, 0)))
+    end_time = tz.localize(
+        datetime.datetime.combine(end_day, datetime.time(12, 0))
+    )
     utc_end_time = end_time.astimezone(datetime.timezone.utc)
 
     # end_time = start_time + datetime.timedelta(days=1)
@@ -82,9 +86,9 @@ def get_day_info(
         moon_phase = moon.phase(current_time)
 
         # Find local time
-        local_time = current_time.astimezone(pytz.timezone(location.timezone)).replace(
-            tzinfo=None
-        )
+        local_time = current_time.astimezone(
+            pytz.timezone(location.timezone)
+        ).replace(tzinfo=None)
 
         # Processing of the info we've found
         moon_brightness = (
@@ -188,11 +192,19 @@ def get_day_info(
     )
     sky_conditions.append(current_sky_condition.copy())
     sky_conditions = [
-        condition for condition in sky_conditions if condition["state"] == "dark"
+        condition
+        for condition in sky_conditions
+        if condition["state"] == "dark"
     ]
 
     day_info = {
-        "location": location,
+        "location": {
+            "name": location.name,
+            "region": location.region,
+            "timezone": location.timezone,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+        },
         "day": day,
         "start": start_time.replace(tzinfo=None),
         "end": end_time.replace(tzinfo=None),

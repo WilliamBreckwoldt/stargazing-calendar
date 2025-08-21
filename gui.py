@@ -107,7 +107,7 @@ def plot_day(day_info):
 
     # Formatting the plot
     plt.title(
-        f"Sun and Moon Elevation for the night of {day_info["day"].strftime('%Y-%m-%d')} in {day_info["location"].name}"
+        f"Sun and Moon Elevation for the night of {day_info["day"].strftime('%Y-%m-%d')} in {day_info["location"]["name"]}"
     )
     plt.xlabel("Time of Day")
     plt.ylabel("Elevation (Degrees)")
@@ -300,10 +300,8 @@ def create_stargazing_gui():
             section3_interactive.clear_output(wait=True)
             print(f"Interaction for date: {date_obj.strftime('%Y-%m-%d')}")
 
-    results = {}
-
     # --- "Go" button callback ---
-    def go_button_callback(b, results):
+    def go_button_callback(b):
         with output_widget:
             output_widget.clear_output()
             print("--- Running with current settings ---")
@@ -313,9 +311,6 @@ def create_stargazing_gui():
             )  # Log the new setting
         section2_results.clear_output(wait=True)
         section3_interactive.clear_output(wait=True)
-
-        location_info = {"name": location_dropdown.value}
-        current_year = datetime.datetime.now().year
 
         # Gather the inputs to year info
         L = LOCATIONS[location_dropdown.value]
@@ -332,13 +327,41 @@ def create_stargazing_gui():
         year_info = main.get_year_info(
             location, year, timestep_minutes=timestep
         )
-        results["year info"] = year_info
+
+        calendar_info = {}
+        duration = datetime.timedelta(minutes=stargazing_slider.value)
+        times = stargazing_range_slider.value
+        for day, day_info in year_info["days"].items():
+            # Check if there's a good stargazing window
+            stargazing_window = False
+            for condition in day_info["conditions"]["sky"]:
+                dark_start = condition["start"]
+                dark_end = condition["end"]
+
+                base_date = datetime.datetime.combine(
+                    datetime.date.fromisoformat(day),
+                    datetime.time(hour=0, minute=0),
+                )
+                range_start = base_date + datetime.timedelta(
+                    minutes=times[0] * 60
+                )
+                range_end = base_date + datetime.timedelta(
+                    minutes=times[1] * 60
+                )
+
+                true_start = max(dark_start, range_start)
+                true_end = min(dark_end, range_end)
+
+                stargazing_window = (true_end - true_start) >= duration
+
+            calendar_info.update({day: stargazing_window})
 
         with section2_results:
             calendar_widget = create_calendar_view(
                 interaction_function=day_interaction_callback,
-                location_info=location_info,
-                year=current_year,
+                calendar_info=calendar_info,
+                location_info=year_info["location"],
+                year=year_info["year"],
                 week_starts_on=week_start_toggle.value,  # Pass the selected value
             )
             display(calendar_widget)
@@ -346,7 +369,7 @@ def create_stargazing_gui():
         save_calendar_button.disabled = False
         save_graphic_button.disabled = False
 
-    go_button.on_click(go_button_callback, results)
+    go_button.on_click(go_button_callback)
 
     # --- Assemble the GUI ---
     main_gui = widgets.VBox(
@@ -368,7 +391,11 @@ def create_stargazing_gui():
 
 
 def create_calendar_view(
-    interaction_function, location_info, year, week_starts_on="Sunday"
+    interaction_function,
+    calendar_info,
+    location_info,
+    year,
+    week_starts_on="Sunday",
 ):
     """
     Creates a full year calendar view with interactive day buttons and cosmetic tweaks.
@@ -467,6 +494,9 @@ def create_calendar_view(
             )
             day_callback = partial(interaction_function, current_day)
             day_button.on_click(day_callback)
+
+            if calendar_info[current_day.isoformat()]:
+                day_button.style.button_color = "lightgreen"
 
             day_items.append(day_button)
             current_day += datetime.timedelta(days=1)

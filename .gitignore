@@ -1,6 +1,7 @@
 # Specific to this project:
 
 # Data files
+*.data.json
 
 # Image files (calendars)
 

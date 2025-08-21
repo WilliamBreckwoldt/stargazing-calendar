@@ -8,3 +8,6 @@ matplotlib # Plotting. Duh.
 # Core
 astral # Astronomy calculations for sun and moon
 pytz # Timezone management. TODO: check if needed
+
+# Images
+pathvalidate # Make sure place names don't ruin file names

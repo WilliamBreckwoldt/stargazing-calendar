@@ -7,11 +7,14 @@ import matplotlib.dates as mdates
 import ipywidgets as widgets
 from astral import LocationInfo
 from IPython.display import display
-from locations import LOCATIONS
 
 import main
+import locations as loc
+import images as im
 
 importlib.reload(main)
+importlib.reload(loc)
+importlib.reload(im)
 
 
 def plot_day(day_info):
@@ -58,8 +61,7 @@ def plot_day(day_info):
         condition_start = condition["start"]
         condition_end = condition["end"]
         alpha = (
-            condition_alpha_multipliers[condition["state"]]
-            * condition["brightness"]
+            condition_alpha_multipliers[condition["state"]] * condition["brightness"]
         ) ** 0.5
         rect = patches.Rectangle(
             (condition_start, 0),  # Bottom-left corner
@@ -90,24 +92,14 @@ def plot_day(day_info):
     )
 
     # Add a horizontal line at 0 degrees to represent the horizon
-    plt.axhline(0, color="white", linestyle="-", linewidth=1, label="Horizon")
-    plt.axhline(
-        -6, color="white", linestyle="--", linewidth=1, label="Civil Dusk"
-    )
-    plt.axhline(
-        -12, color="white", linestyle="--", linewidth=1, label="Nautical Dusk"
-    )
-    plt.axhline(
-        -18,
-        color="white",
-        linestyle="--",
-        linewidth=1,
-        label="Astronomical Dusk",
-    )
+    plt.axhline(0, color="white", linestyle="-", linewidth=1)
+    plt.axhline(-6, color="white", linestyle="--", linewidth=1)
+    plt.axhline(-12, color="white", linestyle="--", linewidth=1)
+    plt.axhline(-18, color="white", linestyle="--", linewidth=1)
 
     # Formatting the plot
     plt.title(
-        f"Sun and Moon Elevation for the night of {day_info["day"].strftime('%Y-%m-%d')} in {day_info["location"]["name"]}"
+        f"Sun and Moon Elevation for the night of {day_info["day"].strftime('%Y-%m-%d')}"
     )
     plt.xlabel("Time of Day")
     plt.ylabel("Elevation (Degrees)")
@@ -156,8 +148,9 @@ def create_stargazing_gui():
         return f"{start_time.strftime("%I:%M %p")} - {end_time.strftime("%I:%M %p")}"
 
     # Section 1: Inputs and "Go" button
+    locations = loc.get_locations()
     location_dropdown = widgets.Dropdown(
-        options=LOCATIONS.keys(),
+        options=locations.keys(),
         description="Location:",
         style={"description_width": "initial"},
         layout={"width": "max-content"},  # Adjust width to content
@@ -184,9 +177,7 @@ def create_stargazing_gui():
         style={"description_width": "220px"},
         layout={"width": "500px"},
     )
-    duration_label = widgets.Label(
-        value=format_duration(stargazing_slider.value)
-    )
+    duration_label = widgets.Label(value=format_duration(stargazing_slider.value))
 
     def on_duration_change(change):
         duration_label.value = format_duration(change.new)
@@ -228,7 +219,9 @@ def create_stargazing_gui():
         stargazing_duration = stargazing_slider.value
         start_float, end_float = stargazing_range_slider.value
         if (end_float - start_float) < (stargazing_duration / 60):
-            duration_warning.value = "WARNING: Given time range is too short for requested duration."
+            duration_warning.value = (
+                "WARNING: Given time range is too short for requested duration."
+            )
             duration_warning_state = True
         else:
             duration_warning.value = ""
@@ -248,7 +241,7 @@ def create_stargazing_gui():
         description="Timestep (minutes):",
         style={"description_width": "initial"},
     )
-    week_start_toggle = widgets.ToggleButtons(
+    week_start_toggle = widgets.Dropdown(
         options=["Sunday", "Monday"],
         description="Week Starts On:",
         value="Sunday",
@@ -272,50 +265,74 @@ def create_stargazing_gui():
         ]
     )
 
-    # Section 2, 3, 4: Placeholders and save buttons
-    section2_results = widgets.Output()
-    section3_interactive = widgets.Output()
-    save_calendar_button = widgets.Button(
-        description="Save Calendar", disabled=True
-    )
-    save_graphic_button = widgets.Button(
-        description="Save Fancy Graphic", disabled=True
-    )
-    save_buttons_box = widgets.HBox(
-        [save_calendar_button, save_graphic_button]
-    )
-
     # Section 5: Debugging output
     output_widget = widgets.Output(
         layout={"border": "1px solid black", "margin_top": "10px"}
     )
 
+    # Section 2, 3, 4: Placeholders and save buttons
+    section2_results = widgets.Output()
+    section3_interactive = widgets.Output()
+    save_calendar_button = widgets.Button(
+        description="Save Calendar",
+        disabled=True,
+    )
+
+    save_graphic_button = widgets.Button(
+        description="Save Fancy Graphic",
+        disabled=True,
+    )
+
+    save_buttons_box = widgets.HBox([save_calendar_button, save_graphic_button])
+
+    def save_simple_image(b):
+        with output_widget:
+
+            text_info = {
+                "year": results["year"],
+                "location": results["location"],
+                "stargazing times": results["stargazing times"],
+                "stargazing duration": results["stargazing duration"],
+            }
+
+            im.save_calendar_image(
+                calendar_info=results["calendar info"],
+                week_starts_on=results["week start"],
+                text_info=text_info,
+            )
+
+    save_calendar_button.on_click(save_simple_image)
+
+    def save_fancy_image(b):
+        with output_widget:
+            print("not implemented")
+
+    save_graphic_button.on_click(save_fancy_image)
+
+    results = {}
+
     # --- Interaction function for the calendar ---
     # This is the function handle that will be passed to the calendar.
     # When a day button is clicked, this function will run.
     def day_interaction_callback(
-        date_obj, b
+        day, b
     ):  # The button click passes the button instance `b` as a second arg
         with section3_interactive:
             section3_interactive.clear_output(wait=True)
-            print(f"Interaction for date: {date_obj.strftime('%Y-%m-%d')}")
+            plot_day(results["year info"]["days"][day])
 
     # --- "Go" button callback ---
     def go_button_callback(b):
-        with output_widget:
-            output_widget.clear_output()
-            print("--- Running with current settings ---")
-            print(f"Selected Location: {location_dropdown.value}")
-            print(
-                f"Week Starts On: {week_start_toggle.value}"
-            )  # Log the new setting
+        save_calendar_button.disabled = True
+        save_graphic_button.disabled = True
+
         section2_results.clear_output(wait=True)
-        section3_interactive.clear_output(wait=True)
+        section3_interactive.clear_output()
 
         # Gather the inputs to year info
-        L = LOCATIONS[location_dropdown.value]
+        L = locations[location_dropdown.value]
         location = LocationInfo(
-            name=L["name"],
+            name=location_dropdown.value,
             region=L["region"],
             timezone=L["timezone"],
             latitude=L["latitude"],
@@ -323,14 +340,23 @@ def create_stargazing_gui():
         )
         year = calendar_year.value
         timestep = timestep_slider.value
+        week_start = week_start_toggle.value
 
-        year_info = main.get_year_info(
-            location, year, timestep_minutes=timestep
-        )
+        results["year"] = year
+        results["timestep"] = timestep
+        results["week start"] = week_start
+        results["location"] = location
+
+        with section2_results:
+            year_info = main.get_year_info(location, year, timestep_minutes=timestep)
+
+        results["year info"] = year_info
 
         calendar_info = {}
         duration = datetime.timedelta(minutes=stargazing_slider.value)
         times = stargazing_range_slider.value
+        results["stargazing times"] = times
+        results["stargazing duration"] = duration
         for day, day_info in year_info["days"].items():
             # Check if there's a good stargazing window
             stargazing_window = False
@@ -342,12 +368,8 @@ def create_stargazing_gui():
                     datetime.date.fromisoformat(day),
                     datetime.time(hour=0, minute=0),
                 )
-                range_start = base_date + datetime.timedelta(
-                    minutes=times[0] * 60
-                )
-                range_end = base_date + datetime.timedelta(
-                    minutes=times[1] * 60
-                )
+                range_start = base_date + datetime.timedelta(minutes=times[0] * 60)
+                range_end = base_date + datetime.timedelta(minutes=times[1] * 60)
 
                 true_start = max(dark_start, range_start)
                 true_end = min(dark_end, range_end)
@@ -356,14 +378,19 @@ def create_stargazing_gui():
 
             calendar_info.update({day: stargazing_window})
 
+        results["calendar info"] = calendar_info
+
         with section2_results:
+            print("Creating GUI...")
             calendar_widget = create_calendar_view(
                 interaction_function=day_interaction_callback,
                 calendar_info=calendar_info,
                 location_info=year_info["location"],
                 year=year_info["year"],
-                week_starts_on=week_start_toggle.value,  # Pass the selected value
+                week_starts_on=week_start,  # Pass the selected value
             )
+            print("Loading GUI...")
+            section2_results.clear_output(wait=True)
             display(calendar_widget)
 
         save_calendar_button.disabled = False
@@ -382,7 +409,7 @@ def create_stargazing_gui():
             section3_interactive,
             widgets.HTML("<hr>"),
             save_buttons_box,
-            widgets.HTML("<h3>Debug Output</h3>"),
+            widgets.HTML("<hr>"),
             output_widget,
         ]
     )
@@ -438,6 +465,13 @@ def create_calendar_view(
         day_headers = ["M", "T", "W", "T", "F", "S", "S"]
         start_day_offset = lambda d: d.weekday()
 
+    s = day_size
+    day_button_layout = widgets.Layout(
+        width=f"{s}px",
+        height=f"{s}px",
+        padding="0px",
+    )
+
     for month_num in range(1, 13):
         first_day_of_month = datetime.date(year, month_num, 1)
         month_name = first_day_of_month.strftime("%B")
@@ -486,13 +520,9 @@ def create_calendar_view(
             day_button = widgets.Button(
                 description=str(current_day.day),
                 # style={"font_size":"12px"},
-                layout=widgets.Layout(
-                    width=f"{s}px",
-                    height=f"{s}px",
-                    padding="0px",
-                ),
+                layout=day_button_layout,
             )
-            day_callback = partial(interaction_function, current_day)
+            day_callback = partial(interaction_function, current_day.isoformat())
             day_button.on_click(day_callback)
 
             if calendar_info[current_day.isoformat()]:

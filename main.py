@@ -63,7 +63,9 @@ def get_year_info(
 ):
 
     # --- 1. Turn arguments into a JSON filename ---
-    base_filename = f"lat_{location.latitude}_lon_{location.longitude}_year_{year}_v{DATA_VERSION}"
+    base_filename = (
+        f"lat_{location.latitude}_lon_{location.longitude}_year_{year}_v{DATA_VERSION}"
+    )
     target_filename = os.path.join(
         DATA_FOLDER, f"{base_filename}_timestep_{timestep_minutes}.data.json"
     )
@@ -74,9 +76,7 @@ def get_year_info(
 
     # --- 2. Check for a file with the same name or a compatible timestep ---
     for filename in os.listdir(DATA_FOLDER):
-        if filename.startswith(base_filename) and filename.endswith(
-            ".data.json"
-        ):
+        if filename.startswith(base_filename) and filename.endswith(".data.json"):
             try:
                 # Extract the timestep from the filename
                 saved_timestep_str = filename.replace(
@@ -93,28 +93,39 @@ def get_year_info(
                 print(f"Found compatible data file: {filename}")
                 # --- 3. If it exists, load and return it as a dictionary ---
                 with open(filepath, "r") as f:
+                    print("Lodaing data...")
                     data = json.load(f, object_hook=datetime_decoder)
+                    print("Data loaded.")
                 return data
 
     # --- 4. If not, show a code snippet to save the dictionary ---
-    print("No compatible data file found.")
-    print("\n--- Python Code Snippet to Save Data ---\n")
+    print("No compatible data file found. Simulating...")
 
     start_day = datetime.date(year, 1, 1)
     end_day = datetime.date(year, 12, 31)
 
     day = start_day - datetime.timedelta(days=1)
     daily_info = {}
+    current_month = ""
     while day < end_day:
         day = day + datetime.timedelta(days=1)
-        print(day)
+        month = day.strftime("%b")
+        if month == current_month:
+            print(".", end="")
+        else:
+            print(f"\n{month} .", end="")
+            current_month = month
         day_info = astronomy.get_day_info(
             location=location,
             day=day,
             timestep_minutes=timestep_minutes,
         )
-        del day_info["location"]
+        del day_info[
+            "location"
+        ]  # TODO: Maybe don't need day_info to have this in the first place?
         daily_info.update({day.isoformat(): day_info})
+
+    print("\nYear Simulation Complete.")
 
     year_info = {
         "year": year,
@@ -138,7 +149,7 @@ def get_year_info(
     with open(save_path, "w") as f:
         json.dump(year_info, f, indent=2, cls=DateTimeEncoder)
 
-    print(f"Data successfully saved to {{save_path}}")
+    print(f"Data successfully saved to {save_path}")
 
     return year_info
 

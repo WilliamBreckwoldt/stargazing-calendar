@@ -1,22 +1,11 @@
-# Specific to this project:
-
-# Data files
-*.data.json
-
-# Image files (calendars)
-
-# Custom locations
-
-
-
-
-
-# The rest is copied from: https://github.com/github/gitignore/blob/main/Python.gitignore
+#Mostly from: https://github.com/github/gitignore/blob/main/Python.gitignore
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
+**/__pycache__/
 *.py[codz]
 *$py.class
+*.pyc
 
 # C extensions
 *.so
@@ -216,3 +205,25 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+
+
+
+
+
+
+
+
+# Specific to this project:
+testing.ipynb
+
+# Data files
+*.data.json
+my_locations.loc.json
+
+# Image files (calendars)
+*.png
+
+# Custom locations
+

@@ -11,10 +11,12 @@ from IPython.display import display
 import main
 import locations as loc
 import images as im
+import colors
 
 importlib.reload(main)
 importlib.reload(loc)
 importlib.reload(im)
+importlib.reload(colors)
 
 
 def plot_day(day_info):
@@ -23,11 +25,11 @@ def plot_day(day_info):
     sun_size = 200
 
     condition_colors = {
-        "day": "#9085C0",
-        "civil twilight": "#656F89",
-        "nautical twilight": "#363655",
-        "astronomical twilight": "#181B35",
-        "night": "#070614",
+        "day": colors.DAY,
+        "civil twilight": colors.CIVIL_TWILIGHT,
+        "nautical twilight": colors.NAUTICAL_TWILIGHT,
+        "astronomical twilight": colors.ASTRONOMICAL_TWILIGHT,
+        "night": colors.NIGHT,
     }
 
     condition_alpha_multipliers = {
@@ -38,9 +40,8 @@ def plot_day(day_info):
 
     # 4. Plot the results using Matplotlib
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    # fig.set_facecolor("grey")
     fig.set_size_inches(12, 6)
-    ax.set_facecolor("#0D1C2E")
+    ax.set_facecolor(colors.NIGHT)
     ax.set_xlim(day_info["start"], day_info["end"])
     ax.set_ylim(-90, 90)
 
@@ -71,7 +72,7 @@ def plot_day(day_info):
             (condition_start, 0),  # Bottom-left corner
             condition_end - condition_start,  # width
             90,  # height
-            facecolor="#DDDDDD",
+            facecolor=colors.MOON,
             alpha=alpha,
         )
         ax.add_patch(rect)
@@ -84,19 +85,19 @@ def plot_day(day_info):
         day_info["plot"]["times"],
         day_info["plot"]["sun"],
         s=sun_size,
-        color="#FFDD40",
+        color=colors.SUN,
     )
     plt.scatter(
         day_info["plot"]["times"],
         day_info["plot"]["moon"],
         s=moon_size,
-        color="#444444",
+        color=colors.MOON_DARK,
     )
     plt.scatter(
         day_info["plot"]["times"],
         day_info["plot"]["moon"],
         s=day_info["plot"]["moon phases"],
-        color="#DDDDDD",
+        color=colors.MOON,
     )
 
     # Add a horizontal line at 0 degrees to represent the horizon
@@ -533,7 +534,10 @@ def create_calendar_view(
             day_button.on_click(day_callback)
 
             if calendar_info[current_day.isoformat()]:
-                day_button.style.button_color = "lightgreen"
+                day_button.style.button_color = colors.ASTRONOMICAL_TWILIGHT
+                day_button.style.text_color = colors.MOON
+            else:
+                day_button.style.button_color = "white"
 
             day_items.append(day_button)
             current_day += datetime.timedelta(days=1)

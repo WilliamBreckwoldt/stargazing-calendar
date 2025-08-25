@@ -1,9 +1,14 @@
 import os
 import textwrap
 import datetime
+import importlib
 from matplotlib import pyplot as plt
 from matplotlib import patches
 from pathvalidate import sanitize_filename
+
+import colors
+
+importlib.reload(colors)
 
 
 def save_calendar_image(
@@ -92,8 +97,8 @@ def save_calendar_image(
             y_base = 5 - week_row
 
             is_favorable = calendar_info.get(current_day.isoformat(), False)
-            face_color = "#151838" if is_favorable else "#FFFFFF"
-            font_color = "white" if is_favorable else "black"
+            face_color = colors.ASTRONOMICAL_TWILIGHT if is_favorable else "#FFFFFF"
+            font_color = colors.MOON if is_favorable else "black"
             font_weight = "bold" if is_favorable else "normal"
 
             rect = patches.Rectangle(
@@ -129,7 +134,7 @@ def save_calendar_image(
             ha="center",
             va="top",
             fontsize=6,
-            color="#555555",  # Dark gray for readability
+            color=colors.MOON_DARK,  # Dark gray for readability
         )
 
     filepath = os.path.join("images", filename)

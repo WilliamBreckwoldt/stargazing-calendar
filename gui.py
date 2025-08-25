@@ -55,6 +55,10 @@ def plot_day(day_info):
             facecolor=condition_colors[condition["state"]],
         )
         ax.add_patch(rect)
+        if condition["state"] == "night":
+            print(
+                f"Night from {condition["start"].strftime("%I:%M %p")} to {condition["end"].strftime("%I:%M %p")}"
+            )
 
     # Draw patches to represent moon state
     for condition in day_info["conditions"]["moon"]:
@@ -71,6 +75,10 @@ def plot_day(day_info):
             alpha=alpha,
         )
         ax.add_patch(rect)
+        if condition["state"] == "moon down":
+            print(
+                f"Moon is down from {condition["start"].strftime("%I:%M %p")} to {condition["end"].strftime("%I:%M %p")}"
+            )
 
     plt.scatter(
         day_info["plot"]["times"],
